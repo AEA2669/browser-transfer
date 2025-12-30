@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live P2P File Transfer</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .box { border: 1px solid #ccc; padding: 20px; border-radius: 8px; margin-bottom: 10px; width: 300px; }
+        #status { color: blue; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <h2>P2P File Transfer</h2>
+
+    <div class="box">
+        <p>Your ID: <span id="my-id">...</span></p>
+        <input type="text" id="receiver-id" placeholder="Enter Friend's ID">
+        <button onclick="connectToPeer()">Connect</button>
+    </div>
+
+    <div class="box">
+        <input type="file" id="file-input" disabled>
+        <button id="send-btn" onclick="sendFile()" disabled>Send File</button>
+    </div>
+
+    <div id="status">Waiting for ID...</div>
+    <div id="download-area"></div>
+
+    <script>
+        const peer = new Peer(); // Create a new Peer
+        let conn;
+
+        // Display your ID when PeerJS server assigns one
+        peer.on('open', (id) => {
+            document.getElementById('my-id').innerText = id;
+            document.getElementById('status').innerText = "Ready. Share your ID or connect to another.";
+        });
+
+        // Handle incoming connections (Receiver side)
+        peer.on('connection', (connection) => {
+            conn = connection;
+            setupConnection();
+            document.getElementById('status').innerText = "Connected to sender!";
+        });
+
+        // Connect to a peer (Sender side)
+        function connectToPeer() {
+            const remoteId = document.getElementById('receiver-id').value;
+            conn = peer.connect(remoteId);
+            setupConnection();
+        }
+
+        function setupConnection() {
+            conn.on('open', () => {
+                document.getElementById('status').innerText = "Connection Established!";
+                document.getElementById('file-input').disabled = false;
+                document.getElementById('send-btn').disabled = false;
+            });
+
+            // Receive the file data
+            conn.on('data', (data) => {
+                if (data.file) {
+                    const blob = new Blob([data.file], { type: data.type });
+                    const url = URL.createObjectURL(blob);
+                    const link = document.createElement('a');
+                    link.href = url;
+                    link.download = data.name;
+                    link.innerText = `Click to Download: ${data.name}`;
+                    document.getElementById('download-area').appendChild(link);
+                    document.getElementById('status').innerText = "File Received!";
+                }
+            });
+        }
+
+        // Send the file
+        function sendFile() {
+            const fileInput = document.getElementById('file-input');
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            document.getElementById('status').innerText = "Sending...";
+            
+            // Send file as a Blob/ArrayBuffer
+            conn.send({
+                file: file,
+                name: file.name,
+                type: file.type
+            });
+            
+            document.getElementById('status').innerText = "File Sent!";
+        }
+    </script>
+</body>
+</html>
