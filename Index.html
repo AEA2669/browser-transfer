@@ -3,95 +3,797 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live P2P File Transfer</title>
+    <title>P2P File Transfer - Secure & Fast</title>
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <style>
-        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 20px; }
-        .box { border: 1px solid #ccc; padding: 20px; border-radius: 8px; margin-bottom: 10px; width: 300px; }
-        #status { color: blue; font-weight: bold; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            padding: 30px;
+            max-width: 600px;
+            width: 100%;
+            margin-top: 20px;
+        }
+        
+        h2 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 30px;
+            font-size: 28px;
+        }
+        
+        .box { 
+            border: 2px solid #e0e0e0;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+            background: #f9f9f9;
+        }
+        
+        .box h3 {
+            margin-bottom: 15px;
+            color: #555;
+            font-size: 16px;
+        }
+        
+        .id-display {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            word-break: break-all;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .copy-btn {
+            background: rgba(255,255,255,0.3);
+            border: none;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-left: 10px;
+            white-space: nowrap;
+        }
+        
+        .copy-btn:hover {
+            background: rgba(255,255,255,0.5);
+        }
+        
+        input[type="text"], input[type="file"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+        
+        button:hover:not(:disabled) {
+            background: #5568d3;
+        }
+        
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .button-group button {
+            flex: 1;
+        }
+        
+        .disconnect-btn {
+            background: #e74c3c;
+        }
+        
+        .disconnect-btn:hover {
+            background: #c0392b;
+        }
+        
+        #status { 
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+        
+        .status-waiting { background: #fff3cd; color: #856404; }
+        .status-ready { background: #d1ecf1; color: #0c5460; }
+        .status-connected { background: #d4edda; color: #155724; }
+        .status-error { background: #f8d7da; color: #721c24; }
+        .status-sending { background: #e7f3ff; color: #004085; }
+        
+        .progress-container {
+            margin-top: 15px;
+            display: none;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 25px;
+            background: #e0e0e0;
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            width: 0%;
+            transition: width 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        
+        .file-info {
+            margin-top: 10px;
+            padding: 10px;
+            background: #fff;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #666;
+        }
+        
+        #download-area {
+            margin-top: 20px;
+        }
+        
+        .download-item {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .download-item a {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            flex: 1;
+        }
+        
+        .download-item a:hover {
+            text-decoration: underline;
+        }
+        
+        .file-size {
+            color: #999;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+        
+        .connection-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        
+        .indicator-disconnected { background: #e74c3c; }
+        .indicator-connecting { background: #f39c12; }
+        .indicator-connected { background: #2ecc71; }
+        
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            color: white;
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .qr-section {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            justify-content: center;
+            margin-top: 15px;
+        }
+        
+        .qr-container {
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            display: inline-block;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        #peerIdQR,
+        #websiteQR {
+            display: inline-block;
+        }
+        
+        #peerIdQR canvas,
+        #websiteQR canvas {
+            display: block !important;
+            margin: 0 auto;
+        }
+        
+        .qr-label {
+            text-align: center;
+            font-size: 11px;
+            color: #666;
+            margin-top: 5px;
+            font-weight: 600;
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .tab-btn {
+            flex: 1;
+            padding: 8px;
+            background: #e0e0e0;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            color: #555;
+            transition: all 0.3s;
+        }
+        
+        .tab-btn.active {
+            background: #667eea;
+            color: white;
+        }
+        
+        .tab-btn:hover {
+            opacity: 0.8;
+        }
+        
+        .qr-info {
+            background: #fff;
+            padding: 10px;
+            border-radius: 8px;
+            margin-top: 10px;
+            text-align: center;
+        }
+        
+        .qr-info p {
+            font-size: 12px;
+            color: #666;
+            margin: 5px 0;
+        }
+        
+        .website-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 600;
+            word-break: break-all;
+        }
+        
+        .website-link:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
 
-    <h2>P2P File Transfer</h2>
+    <div class="container">
+        <h2>🚀 P2P File Transfer</h2>
 
-    <div class="box">
-        <p>Your ID: <span id="my-id">...</span></p>
-        <input type="text" id="receiver-id" placeholder="Enter Friend's ID">
-        <button onclick="connectToPeer()">Connect</button>
+        <div id="status" class="status-waiting">
+            <span class="connection-indicator indicator-disconnected"></span>
+            Initializing...
+        </div>
+
+        <div class="box">
+            <h3>📋 Share Your Connection</h3>
+            
+            <div class="tabs">
+                <button class="tab-btn active" onclick="showTab('peer')">Peer ID</button>
+                <button class="tab-btn" onclick="showTab('website')">Website QR</button>
+            </div>
+            
+            <div id="peer-tab" style="display: block;">
+                <div class="id-display">
+                    <span id="my-id">Generating...</span>
+                    <button class="copy-btn" onclick="copyMyId()">Copy</button>
+                </div>
+                
+                <div class="qr-section">
+                    <div class="qr-container">
+                        <div id="peerIdQR"></div>
+                        <div class="qr-label">Scan to Connect</div>
+                    </div>
+                </div>
+                
+                <div class="qr-info">
+                    <p>👆 Scan this QR code with your phone to auto-fill the Peer ID</p>
+                </div>
+            </div>
+            
+            <div id="website-tab" style="display: none;">
+                <div class="qr-section">
+                    <div class="qr-container">
+                        <div id="websiteQR"></div>
+                        <div class="qr-label">Scan to Open Website</div>
+                    </div>
+                </div>
+                
+                <div class="qr-info">
+                    <p>Share this QR code so others can access the app:</p>
+                    <a href="https://aea2669.github.io/browser-transfer/Index.html" target="_blank" class="website-link">
+                        https://aea2669.github.io/browser-transfer/Index.html
+                    </a>
+                    <p style="margin-top: 10px;">
+                        <button class="copy-btn" style="background: #667eea; color: white; padding: 8px 16px;" onclick="copyWebsiteUrl()">Copy Link</button>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="box">
+            <h3>🔗 Connect to Peer</h3>
+            <input type="text" id="receiver-id" placeholder="Enter your friend's Peer ID">
+            <div class="button-group">
+                <button id="connect-btn" onclick="connectToPeer()">Connect</button>
+                <button class="disconnect-btn" id="disconnect-btn" onclick="disconnect()" disabled>Disconnect</button>
+            </div>
+        </div>
+
+        <div class="box">
+            <h3>📁 Send File</h3>
+            <input type="file" id="file-input" disabled onchange="displayFileInfo()">
+            <div class="file-info" id="file-info" style="display: none;"></div>
+            <button id="send-btn" onclick="sendFile()" disabled>Send File</button>
+            
+            <div class="progress-container" id="send-progress-container">
+                <p style="font-size: 13px; margin-bottom: 5px; color: #666;">Sending...</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="send-progress"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="box" id="receive-box" style="display: none;">
+            <h3>📥 Receiving File</h3>
+            <div class="progress-container" style="display: block;">
+                <p style="font-size: 13px; margin-bottom: 5px; color: #666;" id="receive-filename">Receiving...</p>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="receive-progress"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="download-area"></div>
     </div>
 
-    <div class="box">
-        <input type="file" id="file-input" disabled>
-        <button id="send-btn" onclick="sendFile()" disabled>Send File</button>
+    <div class="footer">
+        <p>🔒 Secure peer-to-peer file transfer • No server storage • Direct connection</p>
     </div>
-
-    <div id="status">Waiting for ID...</div>
-    <div id="download-area"></div>
 
     <script>
-        const peer = new Peer(); // Create a new Peer
-        let conn;
+        const CHUNK_SIZE = 16384;
+        const WEBSITE_URL = 'https://aea2669.github.io/browser-transfer/Index.html';
+        let peer = null;
+        let conn = null;
+        let receivedChunks = [];
+        let receivedSize = 0;
+        let expectedSize = 0;
+        let fileName = '';
+        let fileType = '';
 
-        // Display your ID when PeerJS server assigns one
-        peer.on('open', (id) => {
-            document.getElementById('my-id').innerText = id;
-            document.getElementById('status').innerText = "Ready. Share your ID or connect to another.";
-        });
+        function initializePeer() {
+            try {
+                peer = new Peer();
+                
+                peer.on('open', (id) => {
+                    document.getElementById('my-id').innerText = id;
+                    generatePeerQR(id);
+                    updateStatus("Ready to connect! Share your ID or connect to a friend.", "ready");
+                });
 
-        // Handle incoming connections (Receiver side)
-        peer.on('connection', (connection) => {
-            conn = connection;
-            setupConnection();
-            document.getElementById('status').innerText = "Connected to sender!";
-        });
+                peer.on('connection', (connection) => {
+                    if (conn && conn.open) {
+                        connection.close();
+                        return;
+                    }
+                    conn = connection;
+                    setupConnection();
+                    updateStatus("Incoming connection established!", "connected");
+                });
 
-        // Connect to a peer (Sender side)
+                peer.on('error', (err) => {
+                    console.error('Peer error:', err);
+                    updateStatus(`Error: ${err.type}`, "error");
+                });
+
+                peer.on('disconnected', () => {
+                    updateStatus("Disconnected from server. Reconnecting...", "waiting");
+                    setTimeout(() => {
+                        if (!peer.destroyed) {
+                            peer.reconnect();
+                        }
+                    }, 3000);
+                });
+            } catch (err) {
+                console.error('Failed to initialize peer:', err);
+                updateStatus("Failed to initialize. Please refresh the page.", "error");
+            }
+        }
+
+        function generatePeerQR(peerId) {
+            const qrContainer = document.getElementById('peerIdQR');
+            qrContainer.innerHTML = '';
+            
+            new QRCode(qrContainer, {
+                text: peerId,
+                width: 180,
+                height: 180,
+                colorDark: "#667eea",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        }
+
+        function generateWebsiteQR() {
+            const qrContainer = document.getElementById('websiteQR');
+            qrContainer.innerHTML = '';
+            
+            new QRCode(qrContainer, {
+                text: WEBSITE_URL,
+                width: 200,
+                height: 200,
+                colorDark: "#667eea",
+                colorLight: "#ffffff",
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        }
+
+        function showTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            if (tab === 'peer') {
+                document.getElementById('peer-tab').style.display = 'block';
+                document.getElementById('website-tab').style.display = 'none';
+            } else {
+                document.getElementById('peer-tab').style.display = 'none';
+                document.getElementById('website-tab').style.display = 'block';
+                
+                if (document.getElementById('websiteQR').innerHTML === '') {
+                    generateWebsiteQR();
+                }
+            }
+        }
+
+        function copyWebsiteUrl() {
+            navigator.clipboard.writeText(WEBSITE_URL).then(() => {
+                const btn = event.target;
+                const originalText = btn.innerText;
+                btn.innerText = 'Copied!';
+                setTimeout(() => {
+                    btn.innerText = originalText;
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
+        }
+
         function connectToPeer() {
-            const remoteId = document.getElementById('receiver-id').value;
-            conn = peer.connect(remoteId);
-            setupConnection();
+            const remoteId = document.getElementById('receiver-id').value.trim();
+            
+            if (!remoteId) {
+                updateStatus("Please enter a Peer ID", "error");
+                return;
+            }
+            
+            if (remoteId === peer.id) {
+                updateStatus("You cannot connect to yourself!", "error");
+                return;
+            }
+
+            try {
+                updateStatus("Connecting...", "waiting");
+                conn = peer.connect(remoteId, { reliable: true });
+                setupConnection();
+            } catch (err) {
+                console.error('Connection error:', err);
+                updateStatus("Failed to connect. Check the ID and try again.", "error");
+            }
         }
 
         function setupConnection() {
             conn.on('open', () => {
-                document.getElementById('status').innerText = "Connection Established!";
+                updateStatus("Connection established! You can now send files.", "connected");
                 document.getElementById('file-input').disabled = false;
                 document.getElementById('send-btn').disabled = false;
+                document.getElementById('disconnect-btn').disabled = false;
+                document.getElementById('connect-btn').disabled = true;
             });
 
-            // Receive the file data
             conn.on('data', (data) => {
-                if (data.file) {
-                    const blob = new Blob([data.file], { type: data.type });
-                    const url = URL.createObjectURL(blob);
-                    const link = document.createElement('a');
-                    link.href = url;
-                    link.download = data.name;
-                    link.innerText = `Click to Download: ${data.name}`;
-                    document.getElementById('download-area').appendChild(link);
-                    document.getElementById('status').innerText = "File Received!";
-                }
+                handleReceivedData(data);
+            });
+
+            conn.on('close', () => {
+                updateStatus("Connection closed", "ready");
+                resetConnection();
+            });
+
+            conn.on('error', (err) => {
+                console.error('Connection error:', err);
+                updateStatus("Connection error occurred", "error");
+                resetConnection();
             });
         }
 
-        // Send the file
-        function sendFile() {
+        function handleReceivedData(data) {
+            if (data.type === 'file-start') {
+                receivedChunks = [];
+                receivedSize = 0;
+                expectedSize = data.size;
+                fileName = data.name;
+                fileType = data.fileType;
+                
+                document.getElementById('receive-box').style.display = 'block';
+                document.getElementById('receive-filename').innerText = `Receiving: ${fileName}`;
+                document.getElementById('receive-progress').style.width = '0%';
+                document.getElementById('receive-progress').innerText = '0%';
+                updateStatus("Receiving file...", "sending");
+                
+            } else if (data.type === 'file-chunk') {
+                receivedChunks.push(data.chunk);
+                receivedSize += data.chunk.byteLength;
+                
+                const progress = Math.round((receivedSize / expectedSize) * 100);
+                document.getElementById('receive-progress').style.width = progress + '%';
+                document.getElementById('receive-progress').innerText = progress + '%';
+                
+            } else if (data.type === 'file-end') {
+                const blob = new Blob(receivedChunks, { type: fileType });
+                const url = URL.createObjectURL(blob);
+                
+                const downloadDiv = document.createElement('div');
+                downloadDiv.className = 'download-item';
+                downloadDiv.innerHTML = `
+                    <a href="${url}" download="${fileName}">📎 ${fileName}</a>
+                    <span class="file-size">${formatFileSize(expectedSize)}</span>
+                `;
+                
+                document.getElementById('download-area').appendChild(downloadDiv);
+                document.getElementById('receive-box').style.display = 'none';
+                updateStatus("File received successfully!", "connected");
+                
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = fileName;
+                link.click();
+                
+                receivedChunks = [];
+                receivedSize = 0;
+            }
+        }
+
+        async function sendFile() {
             const fileInput = document.getElementById('file-input');
             const file = fileInput.files[0];
-            if (!file) return;
+            
+            if (!file) {
+                updateStatus("Please select a file first", "error");
+                return;
+            }
+            
+            if (!conn || !conn.open) {
+                updateStatus("Not connected to any peer", "error");
+                return;
+            }
 
-            document.getElementById('status').innerText = "Sending...";
-            
-            // Send file as a Blob/ArrayBuffer
-            conn.send({
-                file: file,
-                name: file.name,
-                type: file.type
-            });
-            
-            document.getElementById('status').innerText = "File Sent!";
+            try {
+                document.getElementById('send-btn').disabled = true;
+                document.getElementById('send-progress-container').style.display = 'block';
+                updateStatus("Sending file...", "sending");
+
+                conn.send({
+                    type: 'file-start',
+                    name: file.name,
+                    size: file.size,
+                    fileType: file.type
+                });
+
+                const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+                let offset = 0;
+                let chunkIndex = 0;
+
+                while (offset < file.size) {
+                    const chunk = file.slice(offset, offset + CHUNK_SIZE);
+                    const arrayBuffer = await chunk.arrayBuffer();
+                    
+                    conn.send({
+                        type: 'file-chunk',
+                        chunk: arrayBuffer
+                    });
+
+                    offset += CHUNK_SIZE;
+                    chunkIndex++;
+                    
+                    const progress = Math.min(Math.round((chunkIndex / totalChunks) * 100), 100);
+                    document.getElementById('send-progress').style.width = progress + '%';
+                    document.getElementById('send-progress').innerText = progress + '%';
+                    
+                    await new Promise(resolve => setTimeout(resolve, 10));
+                }
+
+                conn.send({ type: 'file-end' });
+
+                updateStatus("File sent successfully!", "connected");
+                document.getElementById('send-progress-container').style.display = 'none';
+                document.getElementById('send-btn').disabled = false;
+                
+                fileInput.value = '';
+                document.getElementById('file-info').style.display = 'none';
+                
+            } catch (err) {
+                console.error('Error sending file:', err);
+                updateStatus("Failed to send file", "error");
+                document.getElementById('send-progress-container').style.display = 'none';
+                document.getElementById('send-btn').disabled = false;
+            }
         }
+
+        function disconnect() {
+            if (conn) {
+                conn.close();
+            }
+            resetConnection();
+            updateStatus("Disconnected", "ready");
+        }
+
+        function resetConnection() {
+            conn = null;
+            document.getElementById('file-input').disabled = true;
+            document.getElementById('send-btn').disabled = true;
+            document.getElementById('disconnect-btn').disabled = true;
+            document.getElementById('connect-btn').disabled = false;
+            document.getElementById('file-input').value = '';
+            document.getElementById('file-info').style.display = 'none';
+            document.getElementById('send-progress-container').style.display = 'none';
+            document.getElementById('receive-box').style.display = 'none';
+        }
+
+        function copyMyId() {
+            const myId = document.getElementById('my-id').innerText;
+            navigator.clipboard.writeText(myId).then(() => {
+                const btn = event.target;
+                const originalText = btn.innerText;
+                btn.innerText = 'Copied!';
+                setTimeout(() => {
+                    btn.innerText = originalText;
+                }, 2000);
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+            });
+        }
+
+        function displayFileInfo() {
+            const fileInput = document.getElementById('file-input');
+            const file = fileInput.files[0];
+            const fileInfo = document.getElementById('file-info');
+            
+            if (file) {
+                fileInfo.style.display = 'block';
+                fileInfo.innerHTML = `
+                    <strong>📄 ${file.name}</strong><br>
+                    Size: ${formatFileSize(file.size)}<br>
+                    Type: ${file.type || 'Unknown'}
+                `;
+            } else {
+                fileInfo.style.display = 'none';
+            }
+        }
+
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return Math.round(bytes / Math.pow(k, i) * 100) / 100 + ' ' + sizes[i];
+        }
+
+        function updateStatus(message, type) {
+            const statusEl = document.getElementById('status');
+            statusEl.innerText = message;
+            statusEl.className = '';
+            
+            const oldIndicator = statusEl.querySelector('.connection-indicator');
+            if (oldIndicator) oldIndicator.remove();
+            
+            const indicator = document.createElement('span');
+            indicator.className = 'connection-indicator';
+            
+            switch(type) {
+                case 'waiting':
+                    statusEl.classList.add('status-waiting');
+                    indicator.classList.add('indicator-connecting');
+                    break;
+                case 'ready':
+                    statusEl.classList.add('status-ready');
+                    indicator.classList.add('indicator-disconnected');
+                    break;
+                case 'connected':
+                    statusEl.classList.add('status-connected');
+                    indicator.classList.add('indicator-connected');
+                    break;
+                case 'error':
+                    statusEl.classList.add('status-error');
+                    indicator.classList.add('indicator-disconnected');
+                    break;
+                case 'sending':
+                    statusEl.classList.add('status-sending');
+                    indicator.classList.add('indicator-connected');
+                    break;
+            }
+            
+            statusEl.insertBefore(indicator, statusEl.firstChild);
+        }
+
+        window.onload = () => {
+            initializePeer();
+        };
+
+        window.onbeforeunload = () => {
+            if (conn) conn.close();
+            if (peer) peer.destroy();
+        };
     </script>
 </body>
 </html>
